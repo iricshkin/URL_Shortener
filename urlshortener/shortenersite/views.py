@@ -3,28 +3,27 @@ import random
 import string
 
 from django.conf import settings
-
-# from django.core.context_processors import csrf
-from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.middleware.csrf.CsrfViewMiddleware import csrf
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render_to_response
 
-from .models import Urls
+from shortenersite.models import Urls
 
 
-def index(request: HttpRequest) -> HttpResponse:
+def index(request):
     c = {}
     c.update(csrf(request))
     return render_to_response('shortenersite/index.html', c)
 
 
-def redirect_original(request: HttpRequest, short_id: str) -> HttpResponse:
+def redirect_original(request, short_id):
     url = get_object_or_404(Urls, pk=short_id)
     url.count += 1
     url.save()
     return HttpResponseRedirect(url.httpurl)
 
 
-def shorten_url(request: HttpRequest) -> HttpResponse:
+def shorten_url(request):
     url = request.POST.get("url", '')
     if not (url == ''):
         short_id = get_short_code()
@@ -41,7 +40,7 @@ def shorten_url(request: HttpRequest) -> HttpResponse:
     )
 
 
-def get_short_code() -> str:
+def get_short_code():
     length = 6
     char = string.ascii_uppercase + string.digits + string.ascii_lowercase
     while True:
