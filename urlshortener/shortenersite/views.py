@@ -1,51 +1,42 @@
-import json
-import random
-import string
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import render
 
-from django.conf import settings
-from django.middleware.csrf.CsrfViewMiddleware import csrf
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render_to_response
-
-from shortenersite.models import Urls
+from .forms import UrlsForm
+from .models import Urls
 
 
-def index(request):
-    c = {}
-    c.update(csrf(request))
-    return render_to_response('shortenersite/index.html', c)
+def home_view(request):
+    template = 'shortenersite/index.html'
+    context = {}
+    context['form'] = UrlsForm()
+
+    if request.method == 'GET':
+        return render(request, template, context)
+    elif request.method == 'POST':
+        used_form = UrlsForm(request.POST)
+        if used_form.is_valid():
+            shortened_object = used_form.save()
+            new_url = (
+                request.build_absolute_uri('/') + shortened_object.short_url
+            )
+            long_url = shortened_object.long_url
+
+            context['new_url'] = new_url
+            context['long_url'] = long_url
+
+            return render(request, template, context)
+
+        context['errors'] = used_form.errors
+        return render(request, template, context)
 
 
-def redirect_original(request, short_id):
-    url = get_object_or_404(Urls, pk=short_id)
-    url.count += 1
-    url.save()
-    return HttpResponseRedirect(url.httpurl)
+def redirect_url_view(request, shortened_part):
 
+    try:
+        shortener = Urls.objects.get(short_url=shortened_part)
+        shortener.count += 1
+        shortener.save()
+        return HttpResponseRedirect(shortener.long_url)
 
-def shorten_url(request):
-    url = request.POST.get("url", '')
-    if not (url == ''):
-        short_id = get_short_code()
-        b = Urls(httpurl=url, short_id=short_id)
-        b.save()
-
-        response_data = {}
-        response_data['url'] = settings.SITE_URL + "/" + short_id
-        return HttpResponse(
-            json.dumps(response_data), content_type="application/json"
-        )
-    return HttpResponse(
-        json.dumps({"error": "error occurs"}), content_type="application/json"
-    )
-
-
-def get_short_code():
-    length = 6
-    char = string.ascii_uppercase + string.digits + string.ascii_lowercase
-    while True:
-        short_id = ''.join(random.choice(char) for x in range(length))
-        # try:
-        #     temp = Urls.objects.get(pk=short_id)
-        # except:
-        return short_id
+    except:
+        raise Http404('Sorry this link is broken :(')

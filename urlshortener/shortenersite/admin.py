@@ -1,9 +1,10 @@
 from django.contrib import admin
+
 from shortenersite.models import Urls
 
 
 class UrlsAdmin(admin.ModelAdmin):
-    list_display = ('short_id', 'httpurl', 'pub_date', 'count')
+    list_display = ('long_url', 'short_url', 'pub_date', 'count')
     ordering = ('-pub_date',)
 
 
